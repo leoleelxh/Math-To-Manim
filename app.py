@@ -178,23 +178,33 @@ def create_animation_code(storyboard):
    - 设置摄像机角度：self.set_camera_orientation(phi=75*DEGREES, theta=-45*DEGREES)
    - 添加三维坐标系作为参考：ThreeDAxes()
 
-2. 三维元素：
+2. 文字说明系统：
+   - 每个场景开始前显示场景标题（中文，优雅的字体）
+   - 关键步骤配有解释文字（简洁清晰的说明）
+   - 重要公式使用 MathTex 优雅呈现
+   - 文字要有适当的显示时长（3-5秒）
+   - 文字要有渐入渐出效果
+   - 使用 VGroup 组织文字和图形的关联
+
+3. 动画节奏：
+   - 场景间要有明确的过渡（淡入淡出）
+   - 重要概念讲解时放慢速度（4-6秒）
+   - 复杂变换分步展示
+   - 关键处添加短暂停顿（self.wait(2)）
+   - 总时长控制在 3-5 分钟
+
+4. 三维元素：
    - 使用 Surface 展示曲面
    - 使用 ParametricFunction 创建空间曲线
-   - 通过 move_camera 实现动态视角
-   - 所有图形都应在三维空间中展示
+   - 通过 move_camera 展示多角度视图
+   - 所有图形都在三维空间中展示
 
-3. 动画效果：
-   - 使用 Create, Write, Transform 等基础动画
-   - 通过 move_camera 展示不同视角
-   - 控制每个动画在 2-3 秒内完成
-   - 避免复杂的材质和渲染效果
-
-4. 代码规范：
-   - 添加中文注释说明每个步骤
-   - 使用有意义的变量名
-   - 避免复杂计算和随机效果
-   - 使用标准颜色常量
+5. 教学设计：
+   - 概念逐层递进
+   - 重要内容重复强调
+   - 添加直观的类比说明
+   - 结合实际应用场景
+   - 每个场景结束前总结要点
 
 示例结构：
 ```python
@@ -205,9 +215,25 @@ class MathVisualization(ThreeDScene):
         # 设置摄像机
         self.set_camera_orientation(phi=75*DEGREES, theta=-45*DEGREES)
         
+        # 创建标题
+        title = Text("数学概念可视化", font="SimSun", color=BLUE).scale(1.2)
+        subtitle = Text("让抽象变得具体", font="SimSun", color=BLUE_B).scale(0.8)
+        title_group = VGroup(title, subtitle).arrange(DOWN)
+        
+        # 显示标题
+        self.play(Write(title_group), run_time=2)
+        self.wait(2)
+        self.play(FadeOut(title_group))
+        
         # 创建三维坐标系
         axes = ThreeDAxes()
-        self.play(Create(axes))
+        axes_labels = axes.get_axis_labels()
+        self.play(Create(axes), Create(axes_labels))
+        
+        # 创建说明文字
+        explanation = Text("观察三维空间中的函数关系", font="SimSun").scale(0.8)
+        explanation.to_corner(UL)
+        self.play(Write(explanation), run_time=2)
         
         # 创建三维曲面
         surface = Surface(
@@ -218,49 +244,67 @@ class MathVisualization(ThreeDScene):
         )
         surface.set_color(BLUE)
         
+        # 添加公式说明
+        formula = MathTex(r"z = \sin(xy)").next_to(surface, UP)
+        
         # 展示动画
-        self.play(Create(surface))
-        self.move_camera(phi=45*DEGREES, theta=45*DEGREES, run_time=2)
-        self.wait()
+        self.play(
+            Create(surface),
+            Write(formula),
+            run_time=3
+        )
+        
+        # 旋转视角
+        self.move_camera(phi=45*DEGREES, theta=45*DEGREES, run_time=3)
+        
+        # 添加要点总结
+        summary = Text("函数在三维空间的几何意义", font="SimSun").scale(0.8)
+        summary.to_edge(DOWN)
+        self.play(Write(summary))
+        self.wait(2)
 ```
+
+注意事项：
+1. 文字要简洁易懂
+2. 动画节奏要流畅自然
+3. 重要概念要反复强调
+4. 场景转换要平滑
+5. 保持整体美感
 """
     return prompt
 
 def create_math_visualization_prompt(user_input):
     """生成数学可视化提示"""
-    prompt = f"""
-请为以下数学概念创建一个教学动画：{user_input}
+    prompt = f"""请为以下数学概念创建一个教学动画：{user_input}
 
-要求：
-1. 动画设计原则：
-   - 专注于数学概念的直观解释
-   - 使用简洁的几何图形和动画效果
-   - 适度使用3D元素增强空间感
-   - 避免复杂的材质和渲染效果
-   - 控制动画时长在1-2分钟内
+基本要求：
+1. 动画设计：
+   - 从最简单的形式开始，逐步展示概念的复杂性
+   - 使用2D/3D空间展示数学关系，根据概念特点选择合适的维度
+   - 动画要素包括：图形、公式、文字说明
+   - 每个步骤都要有清晰的解释
 
 2. 动画规范：
-   - 场景类必须继承自 Scene
-   - 使用基础颜色常量：BLUE, RED, GREEN, YELLOW, WHITE
-   - 3D元素仅限于：
-     * ThreeDAxes（三维坐标系）
-     * Surface（简单曲面）
-     * ParametricFunction（参数曲线）
-   - 动画方法限制使用：
-     * Create, Write, Transform
-     * Rotate, Move
-     * FadeIn, FadeOut
-   - 每个动画片段控制在2-3秒
+   - 场景类根据需要选择 Scene 或 ThreeDScene
+   - 动画方法：Create, Write, Transform, FadeIn/Out 等基础方法
+   - 动画时长：关键概念4-6秒，过渡2-3秒
+   - 总时长控制在3-5分钟
    
 3. 代码要求：
    - 添加中文注释说明每个步骤
    - 使用有意义的变量名
-   - 3D场景使用 camera.set_euler_angles(phi, theta, gamma) 设置合适视角
-   - 避免复杂的数学计算和随机效果
+   - 确保代码可执行性和复用性
+   - 避免不必要的复杂计算
+
+4. 可选功能：
+   - 如果概念涉及变化过程，使用 ValueTracker 实现动态变化
+   - 如果需要强调某些部分，使用 Indicate 或颜色变化
+   - 如果有多个相关概念，使用 VGroup 组织它们的关系
+   - 如果需要多视角展示，使用 move_camera（在 ThreeDScene 中）
 
 请按以下格式输出：
-1. 教学分析：[简要分析概念的关键点和可视化重点]
-2. 动画剧本：[场景描述，动画节奏，视觉重点]
+1. 教学分析：[分析概念的关键点，确定可视化重点]
+2. 动画剧本：[场景描述，动画节奏，重点说明]
 3. Manim代码：[完整的可执行代码]
 """
     return prompt
@@ -268,42 +312,64 @@ def create_math_visualization_prompt(user_input):
 def process_math_visualization(message, history):
     """处理数学可视化请求"""
     try:
-        # 步骤1：扩展用户输入为分镜脚本
-        print("正在生成分镜脚本...")
-        storyboard = create_storyboard(message)
-        print(f"分镜脚本:\n{storyboard}")
+        # 生成动画代码
+        print("\n1. 开始处理可视化请求...")
+        print(f"用户输入: {message}")
         
-        # 步骤2：根据分镜脚本生成动画代码
-        print("正在生成动画代码...")
-        animation_response = create_animation_code(storyboard)
-        print(f"动画代码:\n{animation_response}")
+        print("\n2. 正在生成AI提示...")
+        prompt = create_math_visualization_prompt(message)
+        print(f"生成的提示内容:\n{prompt}")
         
-        # 步骤3：提取并执行代码
+        print("\n3. 正在调用AI生成代码...")
+        response = client.chat.completions.create(
+            model="deepseek-reasoner",
+            messages=[{"role": "user", "content": prompt}]
+        )
+        content = response.choices[0].message.content
+        print("\n4. AI响应内容:")
+        print("-" * 50)
+        print(content)
+        print("-" * 50)
+        
+        # 提取并执行代码
         try:
-            manim_code = extract_manim_code(animation_response)
-            print("提取的 Manim 代码:", manim_code)
+            print("\n5. 正在提取Manim代码...")
+            manim_code = extract_manim_code(content)
+            print("\n6. 提取的代码:")
+            print("-" * 50)
+            print(manim_code)
+            print("-" * 50)
             
+            print("\n7. 正在执行Manim代码...")
             executor = ManimExecutor()
             video_path = executor.execute(manim_code)
+            print(f"\n8. 视频生成成功！保存在: {video_path}")
             
-            # 提取教学目标
-            goal_match = re.search(r'教学目标：(.*?)场景设计：', storyboard, re.DOTALL)
-            teaching_goal = goal_match.group(1).strip() if goal_match else "未找到教学目标"
+            # 提取教学分析
+            print("\n9. 正在提取教学分析...")
+            analysis_match = re.search(r'教学分析：(.*?)动画剧本：', content, re.DOTALL)
+            teaching_analysis = analysis_match.group(1).strip() if analysis_match else "未找到教学分析"
+            print("\n10. 提取的教学分析:")
+            print("-" * 50)
+            print(teaching_analysis)
+            print("-" * 50)
             
-            return f"""教学目标：
+            return f"""教学分析：
 
-{teaching_goal}
+{teaching_analysis}
 
 动画演示：[video]{video_path}[/video]"""
         
         except Exception as code_error:
+            print(f"\n❌ 代码执行失败: {str(code_error)}")
             return f"""生成结果：
 
-{storyboard}
+{content}
 
 动画生成失败：{str(code_error)}"""
             
     except Exception as e:
+        print(f"\n❌ 处理失败: {str(e)}")
         return f"错误: {str(e)}"
 
 # 更新界面描述
