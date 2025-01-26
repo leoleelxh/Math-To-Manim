@@ -49,6 +49,9 @@ class ManimExecutor:
     
     def prepare_code(self, code):
         """准备代码，添加必要的配置"""
+        # 检查是否需要使用 ThreeDScene
+        is_3d = "frame = self.camera.frame" in code
+        
         config_code = f"""
 # 设置渲染配置
 config.pixel_width = {self.render_config['pixel_width']}
@@ -57,6 +60,11 @@ config.frame_rate = {self.render_config['frame_rate']}
 config.background_color = "{self.render_config['background_color']}"
 
 """
+        # 如果代码中使用了 camera.frame，需要使用 ThreeDScene
+        if is_3d:
+            code = code.replace("(Scene):", "(ThreeDScene):")
+            print("检测到3D场景需求，已将Scene替换为ThreeDScene")
+        
         # 在 imports 后添加配置
         if "from manim import *" in code:
             code = code.replace(
@@ -71,42 +79,69 @@ config.background_color = "{self.render_config['background_color']}"
     def execute(self, code):
         """执行 Manim 代码并返回生成的视频路径"""
         try:
-            # 提取场景名
+            print("\n7.1 正在提取场景名...")
             scene_name = self.extract_scene_name(code)
+            print(f"场景名: {scene_name}")
             
-            # 准备代码
+            print("\n7.2 正在准备代码...")
             prepared_code = self.prepare_code(code)
+            print("代码准备完成，包含渲染配置")
             
-            # 创建临时 Python 文件
+            print("\n7.3 正在创建临时Python文件...")
             temp_file = self.temp_dir / "temp_scene.py"
             temp_file.write_text(prepared_code, encoding='utf-8')
+            print(f"临时文件创建成功: {temp_file}")
+            print(f"文件内容:\n{'-'*50}\n{prepared_code}\n{'-'*50}")
             
-            # 执行 Manim 命令
-            cmd = f"manim -pqh --fps {self.render_config['frame_rate']} {temp_file} {scene_name}"
+            print("\n7.4 正在构建Manim命令...")
+            # 在Windows上使用gbk编码
+            if os.name == 'nt':
+                cmd = f"chcp 65001 && manim -pqh --fps {self.render_config['frame_rate']} {temp_file} {scene_name}"
+            else:
+                cmd = f"manim -pqh --fps {self.render_config['frame_rate']} {temp_file} {scene_name}"
+            print(f"执行命令: {cmd}")
+            
+            print("\n7.5 开始执行Manim命令...")
+            # 在Windows上设置encoding='gbk'
             result = subprocess.run(
                 cmd, 
                 shell=True, 
                 check=True,
                 capture_output=True,
-                text=True
+                text=True,
+                encoding='gbk' if os.name == 'nt' else 'utf-8'
             )
             
-            # 查找生成的视频文件
+            print("\n7.6 Manim命令执行输出:")
+            print("-" * 50)
+            print("标准输出:")
+            print(result.stdout)
+            if result.stderr:
+                print("\n错误输出:")
+                print(result.stderr)
+            print("-" * 50)
+            
+            print("\n7.7 正在查找生成的视频文件...")
             video_files = list(self.temp_dir.glob("*.mp4"))
             if not video_files:
                 raise Exception("未找到生成的视频文件")
+            print(f"找到视频文件: {video_files[0]}")
             
-            # 移动视频到输出目录
+            print("\n7.8 正在移动视频到输出目录...")
             video_file = video_files[0]
             output_file = self.output_dir / f"{scene_name}_{video_file.name}"
             video_file.rename(output_file)
+            print(f"视频已移动到: {output_file}")
             
             return str(output_file)
         except subprocess.CalledProcessError as e:
-            error_msg = f"Manim 执行错误:\n{e.stderr}"
+            error_msg = f"Manim 执行错误:\n{e.stderr if hasattr(e, 'stderr') else str(e)}"
+            print(f"\n❌ {error_msg}")
             raise Exception(error_msg)
         except Exception as e:
-            raise Exception(f"动画生成失败: {str(e)}")
+            error_msg = f"动画生成失败: {str(e)}"
+            print(f"\n❌ {error_msg}")
+            raise Exception(error_msg)
 
     def set_quality(self, quality_preset="high"):
         """设置渲染质量预设"""
@@ -176,11 +211,12 @@ def create_animation_code(storyboard):
 要求：
 1. 场景设置：
    - 使用 ThreeDScene 作为基类
-   - 设置摄像机角度：self.set_camera_orientation(phi=75*DEGREES, theta=-45*DEGREES)
+   - 设置摄像机视角：self.set_camera_orientation(phi=75*DEGREES, theta=-45*DEGREES)
+   - 移动摄像机：self.move_camera(phi=45*DEGREES, theta=60*DEGREES)
    - 添加三维坐标系作为参考：ThreeDAxes()
 
 2. 文字说明系统：
-   - 每个场景开始前显示场景标题（中文，优雅的字体）
+   - 每个场景开始前显示场景标题（使用SimSun字体）
    - 关键步骤配有解释文字（简洁清晰的说明）
    - 重要公式使用 MathTex 优雅呈现
    - 文字要有适当的显示时长（3-5秒）
@@ -287,18 +323,23 @@ def create_math_visualization_prompt(user_input):
 
 2. 动画规范：
    - 场景类根据需要选择 Scene 或 ThreeDScene
-   - 动画方法：Create, Write, Transform, FadeIn/Out 等基础方法
+   - 动画方法限制使用：Create, Write, Transform, FadeIn/Out
    - 动画时长：关键概念4-6秒，过渡2-3秒
    - 总时长控制在3-5分钟
+   - 不要使用 ValueTracker 追踪复数值
+   - 使用 SimSun 字体代替 Source Han Sans
+   - 不要使用外部图片文件
    
 3. 代码要求：
    - 添加中文注释说明每个步骤
    - 使用有意义的变量名
    - 确保代码可执行性和复用性
    - 避免不必要的复杂计算
+   - 使用简单的数值类型（整数、浮点数）
+   - 如果需要展示复杂图形，使用基本图形组合
 
 4. 可选功能：
-   - 如果概念涉及变化过程，使用 ValueTracker 实现动态变化
+   - 如果需要追踪变化，只使用实数值的 ValueTracker
    - 如果需要强调某些部分，使用 Indicate 或颜色变化
    - 如果有多个相关概念，使用 VGroup 组织它们的关系
    - 如果需要多视角展示，使用 move_camera（在 ThreeDScene 中）
