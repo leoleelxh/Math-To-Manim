@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 import gradio as gr
 from openai import OpenAI
 import numpy as np
+from manim import *
 
 # Load environment variables from .env file
 load_dotenv()
@@ -393,4 +394,83 @@ iface = gr.ChatInterface(
 )
 
 if __name__ == "__main__":
-    iface.launch() 
+    iface.launch()
+
+class FractalTree(Scene):
+    def construct(self):
+        # 初始化参数
+        start_length = 3  # 初始树干长度
+        angle = 30*DEGREES  # 分叉角度
+        length_ratio = 0.7  # 长度比例
+        iterations = 4  # 迭代次数
+
+        # 创建基础树干
+        trunk = Line(ORIGIN, UP*start_length, color=BLUE)
+        title = Text("分形树 - 第0次迭代", font="SimSun").to_edge(UP)
+        self.play(Create(trunk), Write(title))
+        self.wait(1)
+
+        # 存储所有分支
+        branches = VGroup(trunk)
+        all_new_branches = VGroup()
+
+        # 递归生成分形树
+        for n in range(1, iterations+1):
+            new_branches = VGroup()
+            
+            # 遍历当前层级的分支
+            for branch in branches:
+                # 获取当前分支的向量
+                branch_vector = branch.get_vector()
+                end_point = branch.get_end()
+                
+                # 创建左分支
+                left_branch = Line(
+                    start=end_point,
+                    end=end_point + rotate_vector(branch_vector*length_ratio, angle),
+                    color=GREEN
+                )
+                
+                # 创建右分支
+                right_branch = Line(
+                    start=end_point,
+                    end=end_point + rotate_vector(branch_vector*length_ratio, -angle),
+                    color=GREEN
+                )
+                
+                # 添加新分支
+                new_branches.add(left_branch, right_branch)
+            
+            # 更新标题
+            new_title = Text(f"分形树 - 第{n}次迭代", font="SimSun").to_edge(UP)
+            
+            # 创建动画
+            self.play(
+                Transform(title, new_title),
+                LaggedStart(*[Create(b) for b in new_branches], lag_ratio=0.1),
+                run_time=2
+            )
+            
+            # 更新分支集合
+            all_new_branches.add(new_branches)
+            branches = new_branches
+            self.wait(0.5)
+
+        # 添加公式
+        formula = MathTex(
+            r"L_{n} = ", r"r", r" \times L_{n-1}",
+            r"\\", r"\theta = 30^\circ"
+        ).to_edge(DOWN)
+        
+        self.play(Write(formula))
+        self.wait(1)
+
+        # 添加参数说明
+        param_text = Text(
+            "r: 长度比例\nθ: 分叉角度",
+            font="SimSun",
+            color=YELLOW
+        ).scale(0.8).next_to(formula, RIGHT)
+        
+        self.play(Write(param_text))
+        self.wait(2) 
