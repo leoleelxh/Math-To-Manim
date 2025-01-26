@@ -312,7 +312,7 @@ class MathVisualization(ThreeDScene):
 
 def create_math_visualization_prompt(user_input):
     """生成数学可视化提示"""
-    prompt = f"""请为以下数学概念创建一个教学动画：{user_input}
+    prompt = """请为以下数学概念创建一个教学动画：""" + user_input + """
 
 基本要求：
 1. 动画设计：
@@ -327,8 +327,10 @@ def create_math_visualization_prompt(user_input):
    - 动画时长：关键概念4-6秒，过渡2-3秒
    - 总时长控制在3-5分钟
    - 不要使用 ValueTracker 追踪复数值
-   - 使用 SimSun 字体代替 Source Han Sans
+   - 中文文字使用 Text(text, font="SimSun")
+   - 数学公式使用 MathTex (不要设置font参数)
    - 不要使用外部图片文件
+   - 坐标轴标签使用 MathTex，不要使用复杂的分数形式
    
 3. 代码要求：
    - 添加中文注释说明每个步骤
@@ -343,6 +345,51 @@ def create_math_visualization_prompt(user_input):
    - 如果需要强调某些部分，使用 Indicate 或颜色变化
    - 如果有多个相关概念，使用 VGroup 组织它们的关系
    - 如果需要多视角展示，使用 move_camera（在 ThreeDScene 中）
+
+示例代码结构：
+```python
+from manim import *
+
+class TrigFunction(Scene):
+    def construct(self):
+        # 创建坐标系
+        axes = Axes(
+            x_range=[-4, 4],
+            y_range=[-2, 2],
+            axis_config={"include_tip": True}
+        )
+        
+        # 添加坐标轴标签
+        x_label = MathTex("x").next_to(axes.x_axis.get_end(), RIGHT)
+        y_label = MathTex("y").next_to(axes.y_axis.get_end(), UP)
+        
+        # 添加标题
+        title = Text("三角函数", font="SimSun").to_edge(UP)
+        self.play(Write(title))
+        
+        # 创建函数图像
+        curve = axes.plot(lambda x: np.tan(x), x_range=[-1, 1])
+        
+        # 添加公式
+        formula = MathTex(r"y = \tan(x)")
+        formula.next_to(title, DOWN)
+        
+        # 展示动画
+        self.play(
+            Create(axes),
+            Write(x_label),
+            Write(y_label),
+            run_time=2
+        )
+        
+        self.play(
+            Create(curve),
+            Write(formula),
+            run_time=2
+        )
+        
+        self.wait(2)
+```
 
 请按以下格式输出：
 1. 教学分析：[分析概念的关键点，确定可视化重点]
@@ -360,7 +407,8 @@ def process_math_visualization(message, history):
         
         print("\n2. 正在生成AI提示...")
         prompt = create_math_visualization_prompt(message)
-        print(f"生成的提示内容:\n{prompt}")
+        print("生成的提示内容:")
+        print(prompt)
         
         print("\n3. 正在调用AI生成代码...")
         response = client.chat.completions.create(
