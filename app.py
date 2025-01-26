@@ -173,43 +173,97 @@ def create_animation_code(storyboard):
 {storyboard}
 
 要求：
-1. 只使用标准 Manim 功能，不使用 voiceover 等扩展功能
-2. 使用基础动画方法：Create, Write, Transform, FadeIn, FadeOut
-3. 使用标准的颜色常量：RED, BLUE, GREEN, YELLOW, WHITE
-4. 确保所有方法和参数都是有效的
-5. 添加中文注释说明每个步骤
-6. 动画时长控制在 1-3 秒之间
-7. 使用 self.wait() 添加适当的暂停
+1. 场景设置：
+   - 使用 ThreeDScene 作为基类
+   - 设置摄像机角度：self.set_camera_orientation(phi=75*DEGREES, theta=-45*DEGREES)
+   - 添加三维坐标系作为参考：ThreeDAxes()
 
-示例代码结构：
+2. 三维元素：
+   - 使用 Surface 展示曲面
+   - 使用 ParametricFunction 创建空间曲线
+   - 通过 move_camera 实现动态视角
+   - 所有图形都应在三维空间中展示
+
+3. 动画效果：
+   - 使用 Create, Write, Transform 等基础动画
+   - 通过 move_camera 展示不同视角
+   - 控制每个动画在 2-3 秒内完成
+   - 避免复杂的材质和渲染效果
+
+4. 代码规范：
+   - 添加中文注释说明每个步骤
+   - 使用有意义的变量名
+   - 避免复杂计算和随机效果
+   - 使用标准颜色常量
+
+示例结构：
 ```python
 from manim import *
 
-class MathVisualization(Scene):
+class MathVisualization(ThreeDScene):
     def construct(self):
-        # 场景1：概念引入
-        title = Text("概念名称", font="SimSun")
-        self.play(Write(title))
-        self.wait()
+        # 设置摄像机
+        self.set_camera_orientation(phi=75*DEGREES, theta=-45*DEGREES)
         
-        # 场景2：图形展示
-        circle = Circle()
-        self.play(Create(circle))
-        self.wait()
+        # 创建三维坐标系
+        axes = ThreeDAxes()
+        self.play(Create(axes))
         
-        # 场景3：总结
-        formula = MathTex("公式")
-        self.play(Write(formula))
+        # 创建三维曲面
+        surface = Surface(
+            lambda u, v: np.array([u, v, np.sin(u*v)]),
+            u_range=[-2, 2],
+            v_range=[-2, 2],
+            resolution=(30, 30)
+        )
+        surface.set_color(BLUE)
+        
+        # 展示动画
+        self.play(Create(surface))
+        self.move_camera(phi=45*DEGREES, theta=45*DEGREES, run_time=2)
         self.wait()
 ```
 """
-    
-    # 调用 AI 生成动画代码
-    response = client.chat.completions.create(
-        model="deepseek-reasoner",
-        messages=[{"role": "user", "content": prompt}]
-    )
-    return response.choices[0].message.content
+    return prompt
+
+def create_math_visualization_prompt(user_input):
+    """生成数学可视化提示"""
+    prompt = f"""
+请为以下数学概念创建一个教学动画：{user_input}
+
+要求：
+1. 动画设计原则：
+   - 专注于数学概念的直观解释
+   - 使用简洁的几何图形和动画效果
+   - 适度使用3D元素增强空间感
+   - 避免复杂的材质和渲染效果
+   - 控制动画时长在1-2分钟内
+
+2. 动画规范：
+   - 场景类必须继承自 Scene
+   - 使用基础颜色常量：BLUE, RED, GREEN, YELLOW, WHITE
+   - 3D元素仅限于：
+     * ThreeDAxes（三维坐标系）
+     * Surface（简单曲面）
+     * ParametricFunction（参数曲线）
+   - 动画方法限制使用：
+     * Create, Write, Transform
+     * Rotate, Move
+     * FadeIn, FadeOut
+   - 每个动画片段控制在2-3秒
+   
+3. 代码要求：
+   - 添加中文注释说明每个步骤
+   - 使用有意义的变量名
+   - 3D场景使用 camera.set_euler_angles(phi, theta, gamma) 设置合适视角
+   - 避免复杂的数学计算和随机效果
+
+请按以下格式输出：
+1. 教学分析：[简要分析概念的关键点和可视化重点]
+2. 动画剧本：[场景描述，动画节奏，视觉重点]
+3. Manim代码：[完整的可执行代码]
+"""
+    return prompt
 
 def process_math_visualization(message, history):
     """处理数学可视化请求"""
