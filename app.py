@@ -6,6 +6,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 import gradio as gr
 from openai import OpenAI
+import numpy as np
 
 # Load environment variables from .env file
 load_dotenv()
@@ -29,6 +30,14 @@ class ManimExecutor:
         # 创建必要的目录
         self.temp_dir.mkdir(parents=True, exist_ok=True)
         self.output_dir.mkdir(parents=True, exist_ok=True)
+        
+        # 设置默认渲染配置
+        self.render_config = {
+            "pixel_width": 1920,      # 视频宽度
+            "pixel_height": 1080,     # 视频高度
+            "frame_rate": 60,         # 帧率
+            "background_color": "#1C1C1C",  # 深灰色背景
+        }
     
     def extract_scene_name(self, code):
         """从代码中提取场景类名"""
@@ -37,18 +46,42 @@ class ManimExecutor:
             return scene_match.group(1)
         return "MathScene"
     
+    def prepare_code(self, code):
+        """准备代码，添加必要的配置"""
+        config_code = f"""
+# 设置渲染配置
+config.pixel_width = {self.render_config['pixel_width']}
+config.pixel_height = {self.render_config['pixel_height']}
+config.frame_rate = {self.render_config['frame_rate']}
+config.background_color = "{self.render_config['background_color']}"
+
+"""
+        # 在 imports 后添加配置
+        if "from manim import *" in code:
+            code = code.replace(
+                "from manim import *",
+                "from manim import *\n" + config_code
+            )
+        else:
+            code = "from manim import *\n" + config_code + code
+        
+        return code
+    
     def execute(self, code):
         """执行 Manim 代码并返回生成的视频路径"""
         try:
             # 提取场景名
             scene_name = self.extract_scene_name(code)
             
+            # 准备代码
+            prepared_code = self.prepare_code(code)
+            
             # 创建临时 Python 文件
             temp_file = self.temp_dir / "temp_scene.py"
-            temp_file.write_text(code, encoding='utf-8')
+            temp_file.write_text(prepared_code, encoding='utf-8')
             
             # 执行 Manim 命令
-            cmd = f"manim -pqh {temp_file} {scene_name}"
+            cmd = f"manim -pqh --fps {self.render_config['frame_rate']} {temp_file} {scene_name}"
             result = subprocess.run(
                 cmd, 
                 shell=True, 
@@ -74,6 +107,36 @@ class ManimExecutor:
         except Exception as e:
             raise Exception(f"动画生成失败: {str(e)}")
 
+    def set_quality(self, quality_preset="high"):
+        """设置渲染质量预设"""
+        presets = {
+            "low": {
+                "pixel_width": 854,
+                "pixel_height": 480,
+                "frame_rate": 30,
+            },
+            "medium": {
+                "pixel_width": 1280,
+                "pixel_height": 720,
+                "frame_rate": 30,
+            },
+            "high": {
+                "pixel_width": 1920,
+                "pixel_height": 1080,
+                "frame_rate": 60,
+            },
+            "ultra": {
+                "pixel_width": 3840,
+                "pixel_height": 2160,
+                "frame_rate": 60,
+            }
+        }
+        
+        if quality_preset in presets:
+            self.render_config.update(presets[quality_preset])
+        else:
+            raise ValueError(f"不支持的质量预设: {quality_preset}")
+
 def extract_manim_code(content):
     """从 AI 响应中提取 Manim 代码"""
     code_match = re.search(r'```python\n(.*?)```', content, re.DOTALL)
@@ -81,132 +144,130 @@ def extract_manim_code(content):
         raise ValueError("未找到可执行的 Manim 代码")
     return code_match.group(1).strip()
 
-def create_math_visualization_prompt(user_input):
-    """创建数学可视化的提示词"""
-    return f"""作为专业的数学教育动画设计师，请针对以下数学概念创建教学动画：
+def create_storyboard(concept):
+    """根据概念创建动画分镜脚本"""
+    prompt = f"""作为数学动画编剧，请为"{concept}"创建一个详细的分镜脚本。
+要求：
+1. 场景分解：将概念讲解分为3-4个关键场景
+2. 视觉设计：描述每个场景的视觉元素和布局
+3. 动画节奏：说明动画时长和过渡效果
+4. 教学设计：解释每个场景如何帮助理解
 
-{user_input}
+请按以下格式输出：
+1. 教学目标：[说明这个动画要达到的教学效果]
+2. 场景设计：[详细描述每个场景]
+3. 视觉风格：[说明整体的色彩和风格]
+"""
+    
+    # 调用 AI 生成分镜脚本
+    response = client.chat.completions.create(
+        model="deepseek-reasoner",
+        messages=[{"role": "user", "content": prompt}]
+    )
+    return response.choices[0].message.content
 
-请按照以下步骤设计：
+def create_animation_code(storyboard):
+    """根据分镜脚本生成 Manim 代码"""
+    prompt = f"""基于以下分镜脚本，生成对应的 Manim 动画代码：
 
-1. 教学分析
-- 概念的核心要点是什么？
-- 学生可能遇到的难点是什么？
-- 如何通过可视化帮助理解？
+{storyboard}
 
-2. 动画剧本
-- 设计循序渐进的场景
-- 描述每个场景的具体动画效果
-- 说明动画如何帮助理解概念
+要求：
+1. 只使用标准 Manim 功能，不使用 voiceover 等扩展功能
+2. 使用基础动画方法：Create, Write, Transform, FadeIn, FadeOut
+3. 使用标准的颜色常量：RED, BLUE, GREEN, YELLOW, WHITE
+4. 确保所有方法和参数都是有效的
+5. 添加中文注释说明每个步骤
+6. 动画时长控制在 1-3 秒之间
+7. 使用 self.wait() 添加适当的暂停
 
-3. Manim代码
-- 生成完整的、可直接执行的代码
-- 必须包含以下imports:
-  from manim import *
-- 场景类必须继承自Scene类
-- 添加详细的中文注释
-- 确保代码完整且可执行
-- 使用 -pqh 质量设置
-
-请按以下格式回复：
-1. 教学分析：[详细分析]
-2. 动画剧本：[分场景描述]
-3. Manim代码：
+示例代码结构：
 ```python
-[完整代码]
+from manim import *
+
+class MathVisualization(Scene):
+    def construct(self):
+        # 场景1：概念引入
+        title = Text("概念名称", font="SimSun")
+        self.play(Write(title))
+        self.wait()
+        
+        # 场景2：图形展示
+        circle = Circle()
+        self.play(Create(circle))
+        self.wait()
+        
+        # 场景3：总结
+        formula = MathTex("公式")
+        self.play(Write(formula))
+        self.wait()
 ```
 """
-
-def format_latex(text):
-    """Format inline LaTeX expressions for proper rendering in Gradio."""
-    # Replace single dollar signs with double for better display
-    lines = text.split('\n')
-    formatted_lines = []
     
-    for line in lines:
-        # Skip lines that already have double dollars
-        if '$$' in line:
-            formatted_lines.append(line)
-            continue
-            
-        # Format single dollar expressions
-        in_math = False
-        new_line = ''
-        for i, char in enumerate(line):
-            if char == '$' and (i == 0 or line[i-1] != '\\'):
-                in_math = not in_math
-                new_line += '$$' if in_math else '$$'
-            else:
-                new_line += char
-        formatted_lines.append(new_line)
-    
-    return '\n'.join(formatted_lines)
+    # 调用 AI 生成动画代码
+    response = client.chat.completions.create(
+        model="deepseek-reasoner",
+        messages=[{"role": "user", "content": prompt}]
+    )
+    return response.choices[0].message.content
 
 def process_math_visualization(message, history):
     """处理数学可视化请求"""
     try:
-        # 构建消息历史
-        messages = []
-        for human, assistant in history:
-            messages.append({"role": "user", "content": human})
-            if assistant:
-                messages.append({"role": "assistant", "content": assistant})
+        # 步骤1：扩展用户输入为分镜脚本
+        print("正在生成分镜脚本...")
+        storyboard = create_storyboard(message)
+        print(f"分镜脚本:\n{storyboard}")
         
-        # 使用教学设计提示词
-        formatted_message = create_math_visualization_prompt(message)
-        messages.append({"role": "user", "content": formatted_message})
+        # 步骤2：根据分镜脚本生成动画代码
+        print("正在生成动画代码...")
+        animation_response = create_animation_code(storyboard)
+        print(f"动画代码:\n{animation_response}")
         
-        # 调用 DeepSeek API
-        response = client.chat.completions.create(
-            model="deepseek-reasoner",
-            messages=messages
-        )
-        
-        # 获取响应内容
-        content = response.choices[0].message.content
-        
-        # 提取并执行 Manim 代码
+        # 步骤3：提取并执行代码
         try:
-            manim_code = extract_manim_code(content)
+            manim_code = extract_manim_code(animation_response)
+            print("提取的 Manim 代码:", manim_code)
+            
             executor = ManimExecutor()
             video_path = executor.execute(manim_code)
             
-            # 格式化输出内容
-            formatted_content = format_latex(content)
+            # 提取教学目标
+            goal_match = re.search(r'教学目标：(.*?)场景设计：', storyboard, re.DOTALL)
+            teaching_goal = goal_match.group(1).strip() if goal_match else "未找到教学目标"
             
-            return f"""🎓 生成结果：
+            return f"""教学目标：
 
-{formatted_content}
+{teaching_goal}
 
-🎥 动画已生成：[video]{video_path}[/video]"""
+动画演示：[video]{video_path}[/video]"""
         
         except Exception as code_error:
-            # 如果代码执行失败，仍然显示分析结果
-            formatted_content = format_latex(content)
-            return f"""🎓 生成结果：
+            return f"""生成结果：
 
-{formatted_content}
+{storyboard}
 
-❌ 动画生成失败：{str(code_error)}"""
+动画生成失败：{str(code_error)}"""
             
     except Exception as e:
         return f"错误: {str(e)}"
 
-# Create Gradio interface with markdown enabled
+# 更新界面描述
 iface = gr.ChatInterface(
     process_math_visualization,
     title="数学可视化助手",
     description="""
-    🔢 输入数学概念或公式，AI 将：
-    1. 分析教学重点
-    2. 设计可视化方案
-    3. 生成动画代码
-    4. 渲染教学视频
+    🔢 输入你想了解的数学概念，AI 将为你：
+    1. 创建生动的可视化动画
+    2. 提供简明的概念解释
+    3. 展示直观的教学演示
     
-    示例输入：
-    - 勾股定理可视化
-    - 函数极限的概念
-    - 圆周率π的几何意义
+    💡 示例输入（直接输入即可）：
+    - 勾股定理
+    - 圆周率
+    - 函数极限
+    
+    🎯 无需输入复杂的公式或详细说明，保持简单即可！
     """,
     theme="soft"
 )

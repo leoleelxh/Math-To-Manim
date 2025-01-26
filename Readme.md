@@ -1,6 +1,100 @@
-# Math-To-Manim
+# Math-To-Manim：数学概念可视化助手 🎥
 
-一个基于 AI 的数学可视化工具，能够自动将数学概念转换为教学动画。
+一个基于 AI 的数学教育工具，能够将数学概念转化为生动的可视化动画。
+
+## ✨ 特点
+
+- 🤖 AI 驱动的教学设计
+- 🎬 实时生成教学动画
+- 📊 自动生成分镜脚本
+- 🎨 精美的视觉效果
+- 🔧 可配置的渲染质量
+
+## 🛠️ 安装
+
+1. 克隆仓库：
+```bash
+git clone https://github.com/yourusername/Math-To-Manim.git
+cd Math-To-Manim
+```
+
+2. 安装依赖：
+```bash
+pip install -r requirements.txt
+```
+
+3. 安装 Manim：
+```bash
+pip install manim
+```
+
+4. 配置环境变量：
+创建 `.env` 文件并添加：
+```
+DEEPSEEK_API_KEY=your_api_key_here
+```
+
+## 🚀 使用方法
+
+1. 启动应用：
+```bash
+python app.py
+```
+
+2. 打开浏览器访问：`http://127.0.0.1:7860`
+
+3. 输入数学概念，例如：
+   - 勾股定理
+   - 圆周率
+   - 函数极限
+   - 傅里叶变换
+
+4. AI 将自动：
+   - 生成教学分镜脚本
+   - 创建动画代码
+   - 渲染可视化视频
+
+## 🎯 示例
+
+输入：
+```
+傅里叶变换
+```
+
+输出：
+- 详细的教学目标
+- 分场景动画演示
+- 直观的概念解释
+
+## ⚙️ 渲染质量设置
+
+支持多种渲染质量预设：
+- 低质量：854x480 @ 30fps
+- 中等：1280x720 @ 30fps
+- 高质量：1920x1080 @ 60fps
+- 超高清：3840x2160 @ 60fps
+
+## 🔧 技术栈
+
+- Python 3.10+
+- Manim CE
+- DeepSeek AI
+- Gradio
+- FastAPI
+
+## 📝 注意事项
+
+1. 确保安装了 LaTeX（Manim 依赖）
+2. 首次渲染可能需要较长时间
+3. 建议使用独立显卡以获得更好的渲染性能
+
+## 🤝 贡献
+
+欢迎提交 Issues 和 Pull Requests！
+
+## 📄 许可
+
+MIT License
 
 ## 项目简介
 
