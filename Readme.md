@@ -1,3 +1,113 @@
+# Math-To-Manim
+
+一个基于 AI 的数学可视化工具，能够自动将数学概念转换为教学动画。
+
+## 项目简介
+
+Math-To-Manim 是一个创新的教育工具，它结合了 AI 的理解能力和 Manim 的动画制作能力，可以：
+- 自动分析数学概念
+- 设计教学动画剧本
+- 生成可视化动画
+- 帮助学生更直观地理解数学概念
+
+## 功能特点
+
+- 🤖 AI 驱动的教学设计
+- 🎨 自动生成 Manim 动画代码
+- 🎥 实时渲染教学视频
+- 📝 详细的教学分析和解释
+- 🔄 交互式的用户界面
+
+## 安装指南
+
+### 1. 系统要求
+
+- Python 3.8 或更高版本
+- FFmpeg
+- LaTeX 发行版（如 MiKTeX）
+
+### 2. 安装依赖
+
+```bash
+# 克隆项目
+git clone [your-repository-url]
+cd Math-To-Manim
+
+# 安装 Python 依赖
+pip install -r requirements.txt
+
+# 安装 FFmpeg（Windows）
+choco install ffmpeg
+
+# 安装 MiKTeX（Windows）
+# 从 https://miktex.org/download 下载并安装
+```
+
+### 3. 配置
+
+创建 `.env` 文件并添加以下配置：
+```env
+DEEPSEEK_API_KEY=your_api_key_here
+```
+
+## 使用方法
+
+1. 启动应用：
+```bash
+python app.py
+```
+
+2. 在浏览器中打开显示的链接（通常是 http://127.0.0.1:7860）
+
+3. 在输入框中输入数学概念，例如：
+   - 勾股定理可视化
+   - 函数极限的概念
+   - 圆周率π的几何意义
+
+4. 系统将自动：
+   - 分析教学重点
+   - 设计动画剧本
+   - 生成并展示动画
+
+## 示例
+
+### 勾股定理可视化
+```
+请创建一个动画来可视化勾股定理（a² + b² = c²），展示直角三角形的三个正方形面积之间的关系。
+```
+
+## 常见问题
+
+1. **视频无法生成？**
+   - 确保已正确安装 FFmpeg
+   - 检查 Manim 依赖是否完整
+
+2. **LaTeX 渲染错误？**
+   - 确保已安装 MiKTeX 或其他 LaTeX 发行版
+   - 检查 LaTeX 包是否完整
+
+## 技术栈
+
+- Gradio：Web 界面框架
+- Manim：数学动画引擎
+- DeepSeek：AI 模型
+- FFmpeg：视频处理
+
+## 贡献指南
+
+欢迎提交 Pull Requests 来改进项目。请确保：
+1. 代码符合项目的编码规范
+2. 添加适当的测试
+3. 更新相关文档
+
+## 许可证
+
+[选择合适的许可证]
+
+## 更新日志
+
+查看 [CHANGELOG.md](CHANGELOG.md) 了解详细的更新历史。
+
 # Math-To-Manim 
 
 [![Star History Chart](https://api.star-history.com/svg?repos=harleycoops/deepseek-manim-animation-generator&type=Date)](https://star-history.com/#harleycoops/deepseek-manim-animation-generator&Date)
